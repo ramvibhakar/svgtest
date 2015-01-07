@@ -15,14 +15,14 @@ var svgns = "http://www.w3.org/2000/svg";       // SVG Namespace
 var svgDocument;                                // Global SVG doc
 // SVG-iods
 var meteor;
-
+var groupPath;
 // SVG-iods
 var meteorSpeedLarge = .5;
 var meteorSpeedMedium = 1;
 var meteorSpeedSmall = 1.5;
 var meteorDataLarge = []; // Array to hold data about large meteors
 var meteorDataMedium = []; // Array to hold data about large meteors
-
+var groupDataTwin = []
 
 // Levels
 var showSplashScreen = true;
@@ -74,7 +74,7 @@ function Asteroid(meteorData, initialPosition)
     if (Math.random() > .5) { this.rotationIncrement *= -1; }
 
     this.renderAndMove = _AsteroidRenderAndMove;
-    this.hitTest = _AsteroidHitTest;
+
         
     var svgs = document.getElementsByTagName("svg");
     var svg = svgs[0];    
@@ -101,20 +101,6 @@ function Asteroid(meteorData, initialPosition)
 }
 
 
-function _AsteroidHitTest (px, py, r)
-{
-    var centroid = this.position.add(this.data.centroidOffset);
-    var astShipVector = new Vector2(centroid.x, centroid.y,
-                                    px, py);
-    var distance = astShipVector.length();
-    if (distance < (this.data.radius + r)) {
-        return true;
-    }
-    else {
-        return false;
-    }
-}
-
 function _AsteroidRenderAndMove()
 {
     this.rotation = this.rotation + this.rotationIncrement;
@@ -136,7 +122,66 @@ function _AsteroidRenderAndMove()
 }
 /////// END Asteroid Class
 ///////
+/// Group
 
+function GroupData ()
+{
+    this.element;
+    this.centroidOffset;
+    this.radius;
+    this.speed;
+    this.typeArray;
+}
+function Group(groupData, initialPosition)
+{
+    this.position = new Vector2(0,0,0,0);
+    this.direction = new Vector2(0,0,0,0);
+    this.direction.makeRandomDirection();
+    this.data = groupData;
+    this.element;
+    this.rotation = 0;
+    this.data.speed = meteorSpeedLarge;
+    this.rotationIncrement = 1.2;
+
+
+    this.renderAndMove = _GroupRenderAndMove;
+
+
+    var svgs = document.getElementsByTagName("svg");
+    var svg = svgs[0];
+    svgDocument = svg.ownerDocument;
+
+    // Place the meteor randomly without blowing up the ship.
+    if (initialPosition == undefined) {
+        this.position.x = Math.floor(Math.random()*ScreenWidth);
+        this.position.y = Math.floor(Math.random()*ScreenHeight);
+    }
+
+    else {
+        this.position = initialPosition;
+    }
+
+    this.element = svgDocument.getElementById("twin");
+}
+function _GroupRenderAndMove()
+{
+    this.rotation = this.rotation + this.rotationIncrement;
+    this.position = this.position.add(this.direction.smult(this.data.speed));
+    this.element.setAttributeNS(null, "transform",
+        "rotate(" +
+        this.rotation + "," +
+        (this.position.x + this.data.centroidOffset.x) + "," +
+        (this.position.y + this.data.centroidOffset.y) + ")" +
+        " " +
+        "translate(" +
+        this.position.x + "," +
+        this.position.y + ")"
+    );
+    this.element.setAttributeNS(null, "display", "inherit");
+
+    // Do screen wrapping
+    this.position = ScreenWrap(this.position, this.data.radius * 2);
+}
 ////// Global Functions
 
 function ScreenWrap(pos, border)
@@ -218,7 +263,17 @@ function InitializeAsteroidData ()
     meteorDataLarge.push(ast);
 
 }
+function InitializeGroupData ()
+{
 
+    ast = new GroupData();
+    ast.element = document.getElementById("twin");
+    ast.centroidOffset = new Vector2(0,0,36,39);
+    ast.radius = 41;
+    ast.typeArray = meteorDataLarge;
+    groupDataTwin.push(ast);
+
+}
 function RenderDestroyableObjects(objects)
 {
     // All of these objects must implement:
@@ -253,7 +308,8 @@ function StartGame()
 	document.addEventListener("keyup", KeyUp, true);
 	document.addEventListener("keypress", KeyPress, false);
     InitializeAsteroidData();
-
+    InitializeGroupData();
+    groupPath = new Group(groupDataTwin[0]);
     meteor=new Asteroid(meteorDataLarge[0]);
 
  }
@@ -308,6 +364,7 @@ function MainLoop()
         }
         // Compute user input
         RenderDestroyableObjects(meteor);
+        RenderDestroyableObjects(groupPath);
     }
 }
 
